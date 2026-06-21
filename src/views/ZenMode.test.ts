@@ -12,6 +12,8 @@ import { NConfigProvider, NMessageProvider } from 'naive-ui';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 
+import { getAppThemeVars } from '@/theme';
+
 import ZenMode from './ZenMode.vue';
 import ZenModeSource from './ZenMode.vue?raw';
 
@@ -25,8 +27,10 @@ const getNote = vi.fn(() => Promise.resolve(null));
 const saveDraft = vi.fn(() => Promise.resolve(null));
 // 局部常量 getEditorEntry：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const getEditorEntry = vi.fn(() => Promise.resolve(null));
-// 局部常量 scrollToLine：编辑器 scrollToLine 间谍，用于断言大纲点击跳转到对应行。
+// 局部常量 scrollToLine：编辑器 scrollToLine 间谍（回退路径），用于断言大纲点击行为。
 const scrollToLine = vi.fn();
+// 局部常量 scrollToHeadingIndex：编辑器 scrollToHeadingIndex 间谍，大纲点击按"第几个标题"跳转。
+const scrollToHeadingIndex = vi.fn();
 
 vi.mock('@/composables/useDb', () => ({
   useDb: () => ({
@@ -73,7 +77,7 @@ vi.mock('@/components/MarkdownEditor.vue', () => ({
     props: ['modelValue'],
     emits: ['update:modelValue'],
     setup(props: { modelValue?: string }, { expose }) {
-      expose({ focus: vi.fn(), scrollToLine });
+      expose({ focus: vi.fn(), scrollToLine, scrollToHeadingIndex });
       return () => h('textarea', { value: props.modelValue });
     }
   })
@@ -209,9 +213,23 @@ describe('ZenMode', () => {
     await flushPromises();
 
     await wrapper.find('[data-testid="zen-outline-toggle"]').trigger('click');
-    // 第二个标题在第 3 行（heading-{行号}），点击后应让编辑器滚动到第 3 行
+    // 「标题二」是文档第 2 个标题（0-indexed = 1）。大纲跳转按"第几个标题"定位，
+    // 不依赖 startLine（0-indexed）与 buildOutline 行号（1-indexed）之间的脆弱映射。
     await wrapper.find('[data-testid="zen-outline-node-heading-3"]').trigger('click');
 
-    expect(scrollToLine).toHaveBeenCalledWith(3);
+    expect(scrollToHeadingIndex).toHaveBeenCalledWith(1);
+    expect(scrollToLine).not.toHaveBeenCalled();
+  });
+
+  // 测试用例：Zen 始终是深色界面，需强制注入暗色 --app-* 主题变量，否则全局亮色时
+  // 代码块会沿用亮色变量，在深色画布上对比过低、文字看不清（用户反馈的代码块对比度问题）。
+  it('injects dark app-theme variables onto the Zen surface', async () => {
+    // 局部常量 wrapper：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
+    const wrapper = mount(WrappedZenMode);
+    await flushPromises();
+
+    // 局部常量 style：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
+    const style = wrapper.find('.zen-root').attributes('style') ?? '';
+    expect(style).toContain(getAppThemeVars(true)['--app-surface-2']);
   });
 });

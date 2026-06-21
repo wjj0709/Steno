@@ -36,13 +36,14 @@ import { useMarkdown } from '@/composables/useMarkdown';
 import { useMarkdownOutline } from '@/composables/useMarkdownOutline';
 import { useWritingSession } from '@/composables/useWritingSession';
 import { useUiStore } from '@/stores/ui';
+import { getAppThemeVars } from '@/theme';
 
 // 局部常量 db：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const db = useDb();
 // 局部常量 ui：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const ui = useUiStore();
 const { countWords } = useMarkdown();
-const { buildOutline } = useMarkdownOutline();
+const { buildOutline, listHeadings } = useMarkdownOutline();
 // 局部常量 message：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const message = useMessage();
 // 局部常量 session：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
@@ -62,8 +63,18 @@ const titleEditing = ref(false);
 const titleInputRef = ref<{ focus: () => void } | null>(null);
 // 局部常量 outlineOpen：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const outlineOpen = ref(false);
-// 编辑器实例引用：大纲点击跳转通过其 scrollToLine(行号) 实现（WYSIWYG 的 <h*> 无 id 锚点）。
-const editorRef = ref<{ focus: () => void; scrollToLine: (line: number) => void } | null>(null);
+// 编辑器实例引用：大纲点击跳转通过其 scrollToHeadingIndex(序号) 实现（WYSIWYG 的 <h*> 无 id 锚点）。
+const editorRef = ref<{
+  focus: () => void;
+  scrollToLine: (line: number) => void;
+  scrollToHeadingIndex: (index: number) => void;
+} | null>(null);
+
+// Zen 始终是深色沉浸界面。强制注入暗色 --app-* 主题变量，覆盖从全局 .app-theme-root 继承的
+//（可能为亮色的）变量，使代码块等以 var(--app-*) 取色的子元素与深色背景一致 —— 否则全局亮色时
+// 代码块会沿用亮色变量，呈现浅底浅字、对比过低看不清。CM 语法高亮用固定 defaultHighlightStyle
+// （无主题分支），在暗色底上即与全局暗色模式同款观感。
+const zenThemeVars = getAppThemeVars(true);
 
 // 局部常量 wordCount：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const wordCount = computed(() => countWords(content.value));
@@ -136,11 +147,18 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// 函数 onSelectOutline：点击大纲条目时，让 WYSIWYG 编辑器滚动到对应源码行。
-// Zen 始终是所见即所得编辑态，渲染出的 <h*> 不带 id 锚点，故用编辑器暴露的
-// scrollToLine(行号) 跳转（与 NoteEditorView 编辑态一致），而非 getElementById。
-function onSelectOutline(node: { line: number }) {
-  editorRef.value?.scrollToLine(node.line);
+// 函数 onSelectOutline：点击大纲条目时，让 WYSIWYG 编辑器滚动到对应标题。
+// Zen 始终是所见即所得编辑态，渲染出的 <h*> 不带 id 锚点。优先用"第几个标题"索引定位
+//（大纲项与文档 heading 一一对应，不受 startLine 在粘贴/插入后失配、以及 0/1-indexed 错配影响），
+// 与 NoteEditorView 编辑态一致；理论上不会落空，找不到才回退按源码行号。
+function onSelectOutline(node: { line: number; id: string }) {
+  // 局部常量 headingIndex：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
+  const headingIndex = listHeadings(content.value).findIndex(h => h.id === node.id);
+  if (headingIndex >= 0) {
+    editorRef.value?.scrollToHeadingIndex(headingIndex);
+  } else {
+    editorRef.value?.scrollToLine(node.line);
+  }
 }
 
 // ----- 导出 ----------------------------------------------------------
@@ -187,7 +205,7 @@ onUnmounted(() => {
 
 <template>
   <!-- 模板区：描述 Zen Mode 的 DOM 层级、可交互区域和条件渲染边界。 -->
-  <div class="zen-root">
+  <div class="zen-root" :style="zenThemeVars">
     <header class="zen-header" data-tauri-drag-region="true">
       <div class="zen-title-area" data-tauri-drag-region="true">
         <NInput
