@@ -1,0 +1,43 @@
+[package]
+name = "steno"
+version = "0.1.0"
+description = "Steno — 跨平台桌面速记应用"
+edition = "2024"
+rust-version = "1.96.0"
+
+# tauri 推荐结构：lib + 薄 main，便于未来拓展（如手机端共用 lib）
+[lib]
+name = "steno_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json"] }
+arboard = "3.6"
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+dirs = "6"
+log = { version = "0.4", features = ["std"] }
+pulldown-cmark = "0.13"
+thiserror = "2"
+walkdir = "2"
+
+# 体积优化：release 模式下尽可能瘦身
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
