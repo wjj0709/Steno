@@ -335,6 +335,28 @@
   background: var(--app-surface);
 }
 
+/* 代码块语法高亮 token 配色变量（亮色基准 = CodeMirror defaultHighlightStyle 原值，
+   保持浅色模式外观不变）；token 由 code-block.ts 的 stenoHighlightStyle 以 var(--app-code-*) 取色。
+   --app-code-selection 修复此前选区误用未定义变量（--selected-background-color）导致的"选中看不清"。
+   暗色覆盖见文件末尾「暗色主题」区。 */
+.ProseMirror .steno-code-block {
+  --app-code-meta: #404740;
+  --app-code-keyword: #770088;
+  --app-code-atom: #221199;
+  --app-code-literal: #116644;
+  --app-code-string: #aa1111;
+  --app-code-regexp: #ee4400;
+  --app-code-def: #0000ff;
+  --app-code-variable: #3300aa;
+  --app-code-type: #008855;
+  --app-code-class: #116677;
+  --app-code-special: #225566;
+  --app-code-property: #0000cc;
+  --app-code-comment: #994400;
+  --app-code-invalid: #ff0000;
+  --app-code-selection: rgba(80, 130, 220, 0.25);
+}
+
 /* .ProseMirror .steno-code-block-header：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
 .ProseMirror .steno-code-block-header {
   display: flex;
@@ -746,4 +768,26 @@
 /* .app-theme-root.dark .ProseMirror-placeholder：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
 .app-theme-root.dark .ProseMirror-placeholder {
   color: rgba(180, 180, 184, 0.55);
+}
+
+/* 代码块语法高亮 token —— 暗色配色（One Dark 风格，深底高对比）。覆盖主窗口暗色
+   （.app-theme-root.dark）与 Zen（.zen-root 强制深色但无 .dark 类）下的 token 与选区色，
+   修复「深色模式代码块内容看不清」。 */
+.app-theme-root.dark .ProseMirror .steno-code-block,
+.zen-root .ProseMirror .steno-code-block {
+  --app-code-meta: #abb2bf;
+  --app-code-keyword: #c678dd;
+  --app-code-atom: #d19a66;
+  --app-code-literal: #d19a66;
+  --app-code-string: #98c379;
+  --app-code-regexp: #56b6c2;
+  --app-code-def: #61afef;
+  --app-code-variable: #e06c75;
+  --app-code-type: #e5c07b;
+  --app-code-class: #e5c07b;
+  --app-code-special: #61afef;
+  --app-code-property: #56b6c2;
+  --app-code-comment: #7f848e;
+  --app-code-invalid: #f44747;
+  --app-code-selection: rgba(108, 153, 230, 0.4);
 }

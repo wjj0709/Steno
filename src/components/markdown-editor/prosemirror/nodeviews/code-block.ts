@@ -34,7 +34,7 @@ import {
 } from '@codemirror/view';
 import { EditorState as CMEditorState, Compartment } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { syntaxHighlighting, defaultHighlightStyle, LanguageDescription } from '@codemirror/language';
+import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle, LanguageDescription } from '@codemirror/language';
 import { languages as cmLanguages } from '@codemirror/language-data';
 import { getMermaidThemeVariables, renderMermaidPlaceholders } from '@/utils/markdown/mermaid';
 
@@ -213,43 +213,79 @@ function openMermaidLightbox(svgHtml: string): void {
 }
 
 /**
- * 创建 CodeMirror 主题扩展（移植自 PureMark createThemeExtension，去掉 isDark 分支）。
+ * 代码块语法高亮 token 配色：CodeMirror 的 defaultHighlightStyle 仅为浅底设计（固定深色），
+ * 在暗色背景上会看不清。这里复用其 tag 划分，仅把固定色重映射为 --app-code-* CSS 变量，
+ * 使 token 配色随主题自适应（亮/暗值见 editor-base.css）。映射键是 @codemirror/language 6.x
+ * 内置的稳定色值；未命中的保留原色（优雅降级，不影响渲染）。
+ */
+const CODE_TOKEN_COLOR_VARS: Record<string, string> = {
+  '#404740': 'var(--app-code-meta)',
+  '#708': 'var(--app-code-keyword)',
+  '#219': 'var(--app-code-atom)',
+  '#164': 'var(--app-code-literal)',
+  '#a11': 'var(--app-code-string)',
+  '#e40': 'var(--app-code-regexp)',
+  '#00f': 'var(--app-code-def)',
+  '#30a': 'var(--app-code-variable)',
+  '#085': 'var(--app-code-type)',
+  '#167': 'var(--app-code-class)',
+  '#256': 'var(--app-code-special)',
+  '#00c': 'var(--app-code-property)',
+  '#940': 'var(--app-code-comment)',
+  '#f00': 'var(--app-code-invalid)'
+};
+
+/** 主题感知的语法高亮：token 色走 --app-code-* 变量，暗色下也保持足够对比、不再看不清。 */
+const stenoHighlightStyle = HighlightStyle.define(
+  defaultHighlightStyle.specs.map(spec => {
+    // 局部常量 mapped：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
+    const mapped = spec.color ? CODE_TOKEN_COLOR_VARS[spec.color.toLowerCase()] : undefined;
+    return mapped ? { ...spec, color: mapped } : spec;
+  })
+);
+
+/**
+ * 创建 CodeMirror 主题扩展。
  *
- * Steno 适配：暗色由外层 `.app-theme-root.dark` CSS 驱动，这里只给一个透明背景、
- * 用 CSS 变量取色的基础主题，具体配色（含暗色）交给外层样式覆盖。
+ * CM 自身只给透明背景 + 用 --app-* 变量取色的基础主题，配色随主题切换：
+ * - 文字 / 光标用 --app-fg（此前误用从未定义的 --text-color，暗色下回退继承导致看不清）；
+ * - 行号用 --app-faint；
+ * - 选区用 --app-code-selection（此前误用从未定义的 --selected-background-color，
+ *   导致选中内容无高亮、看不清）；
+ * - 语法高亮用 stenoHighlightStyle（token 色走 --app-code-* 变量，暗色下清晰）。
  */
 function createThemeExtension() {
   // 局部常量 baseTheme：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
   const baseTheme = EditorView.theme({
     '&': {
       backgroundColor: 'transparent',
-      color: 'var(--text-color)'
+      color: 'var(--app-fg)'
     },
     '.cm-content': {
-      caretColor: 'var(--text-color)'
+      caretColor: 'var(--app-fg)'
     },
     '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: 'var(--text-color)'
+      borderLeftColor: 'var(--app-fg)'
     },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-      backgroundColor: 'var(--selected-background-color)'
+      backgroundColor: 'var(--app-code-selection)'
     },
     '.cm-activeLine': {
       backgroundColor: 'transparent'
     },
     '.cm-gutters': {
       backgroundColor: 'transparent',
-      color: 'var(--text-color-3)',
+      color: 'var(--app-faint)',
       border: 'none'
     },
     '.cm-activeLineGutter': {
       backgroundColor: 'transparent'
     },
     '.cm-lineNumbers .cm-gutterElement': {
-      color: 'var(--text-color-3)'
+      color: 'var(--app-faint)'
     }
   });
-  return [baseTheme, syntaxHighlighting(defaultHighlightStyle)];
+  return [baseTheme, syntaxHighlighting(stenoHighlightStyle)];
 }
 
 /**
