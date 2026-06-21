@@ -1,0 +1,749 @@
+/*
+ * @file ProseMirror 富文本编辑器 - editor base
+ *
+ * 定义 editor base 的布局、主题变量和渲染细节，约束组件在不同窗口状态下的视觉表现。
+ * 注释重点标明选择器职责、布局约束和主题变量的影响范围。
+ */
+
+/**
+ * Steno ProseMirror 编辑器基础样式（Phase 7）
+ *
+ * 职责：
+ *  1. 即时渲染显隐类（与 decorations/index.ts 输出的 class 名严格对应）
+ *  2. prosemirror-gapcursor / prosemirror-tables 官方样式
+ *  3. .ProseMirror 容器与常见块级/行内元素的基础可视样式
+ *  4. 暗色主题（根节点 .app-theme-root.dark，与 App.vue / useDark 联动）
+ *
+ * 注意：本文件不使用 scoped，class 名与 decorations 插件、schema 的 toDOM 输出
+ * 必须保持一致，切勿随意重命名。
+ */
+
+/* ============ 第三方插件样式 ============ */
+@import 'prosemirror-gapcursor/style/gapcursor.css';
+@import 'prosemirror-tables/style/tables.css';
+
+/* ============ 即时渲染显隐类（对应 decorations/index.ts） ============ */
+
+/* 语法标记符号（**、>、# 等）隐藏。
+ *
+ * 用「塌缩」而非 display:none：本编辑器是 Typora 风格 WYSIWYG，光标需要能进入语法
+ * 标记文本内自由移动（见 schema/marks.ts 的 syntax_marker 说明）。display:none 会把
+ * 标记移出布局流，破坏光标定位与装饰重算（表现为切到该行/重新加载后标记仍以源码形式
+ * 残留、不能"及时渲染"）。改用 font-size/width/opacity 归零、保留 display:inline，
+ * 与 PureMark `.puremark-syntax-hidden` 完全一致。 */
+.puremark-syntax-hidden {
+  display: inline;
+  width: 0;
+  font-size: 0;
+  opacity: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 语法标记符号显示（光标进入所在区域时） */
+.puremark-syntax-visible {
+  opacity: 0.45;
+}
+
+/* 行内数学源码隐藏（渲染态） */
+.puremark-math-source-hidden {
+  display: none;
+}
+
+/* 行内数学渲染结果 widget */
+.puremark-math-rendered {
+  display: inline-block;
+}
+
+/* ============ ProseMirror 容器 ============ */
+
+.ProseMirror {
+  position: relative;
+  padding: 12px 16px;
+  outline: none;
+  font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+}
+
+/* .ProseMirror[contenteditable="false"]：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror[contenteditable='false'] {
+  cursor: default;
+}
+
+/* 占位符（placeholder 插件用 data-placeholder 或 .ProseMirror-placeholder） */
+.ProseMirror .puremark-placeholder,
+/* .ProseMirror-placeholder：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror-placeholder {
+  position: absolute;
+  color: rgba(127, 127, 127, 0.55);
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* ============ 块级元素 ============ */
+
+.ProseMirror p {
+  margin: 0 0 0.4em;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+/* .ProseMirror h6：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h6 {
+  margin: 0.5em 0 0.3em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* .ProseMirror h1：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h1 {
+  font-size: 1.85em;
+}
+/* .ProseMirror h2：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h2 {
+  font-size: 1.55em;
+}
+/* .ProseMirror h3：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h3 {
+  font-size: 1.3em;
+}
+/* .ProseMirror h4：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h4 {
+  font-size: 1.15em;
+}
+/* .ProseMirror h5：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h5 {
+  font-size: 1.05em;
+}
+/* .ProseMirror h6：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror h6 {
+  font-size: 1em;
+  color: rgba(127, 127, 127, 0.85);
+}
+
+/* 列表 */
+.ProseMirror ul,
+/* .ProseMirror ol：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror ol {
+  margin: 0 0 0.4em;
+  padding-left: 1.6em;
+}
+
+/* .ProseMirror ul：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror ul {
+  list-style: disc;
+}
+
+/* .ProseMirror ol：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror ol {
+  list-style: decimal;
+}
+
+/* .ProseMirror li：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror li {
+  margin: 0.1em 0;
+}
+
+/* .ProseMirror li > p：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror li > p {
+  margin: 0;
+}
+
+/* 任务列表（task_list / task_item） */
+.ProseMirror ul[data-type="task-list"],
+/* .ProseMirror .puremark-task-list：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .puremark-task-list {
+  padding-left: 0.4em;
+  list-style: none;
+}
+
+/* 引用 */
+.ProseMirror blockquote {
+  margin: 0 0 0.4em;
+  padding: 0.1em 0 0.1em 0.9em;
+  border-left: 3px solid rgba(127, 127, 127, 0.4);
+  color: rgba(95, 86, 77, 0.85);
+  background: rgba(127, 127, 127, 0.04);
+}
+
+/* 分隔线 */
+.ProseMirror hr {
+  margin: 0.9em 0;
+  border: none;
+  border-top: 2px solid rgba(127, 127, 127, 0.3);
+}
+
+/* 链接 */
+.ProseMirror a {
+  color: #3b82f6;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 行内代码 */
+.ProseMirror code,
+/* .ProseMirror .steno-code-inline：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-inline {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.14);
+  font-family: ui-monospace, 'Consolas', 'Cascadia Code', monospace;
+  font-size: 0.92em;
+}
+
+/* 行内代码的反引号语法标记所在的 <code> 盒子：去掉背景 / 内边距 / 边框。
+ *
+ * 解析器会把成对反引号也打上 code_inline mark（与 PureMark 一致），DOM 结构为
+ * `<span.steno-syntax><code.steno-code-inline>`</code></span>`。装饰隐藏反引号文本后，
+ * 若 <code> 盒子仍保留背景+内边距，就会渲染成两个空盒子夹着内容 ——
+ * 即"行内代码显示成三块内容"。这里按 mark 类（.steno-syntax）命中，对隐藏/显示两态都生效，
+ * 让反引号盒子完全透明，仅内容盒子可见（移植自 PureMark puremark.css 的同名规则）。 */
+.ProseMirror .steno-syntax .steno-code-inline,
+.ProseMirror .steno-syntax code {
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+}
+
+/* 代码块（NodeView 内嵌 CodeMirror，外层 pre 仅作 fallback 容器） */
+.ProseMirror pre {
+  margin: 0 0 0.6em;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #1f2328;
+  font-family: ui-monospace, 'SFMono-Regular', 'Consolas', 'Cascadia Code', monospace;
+  font-size: 0.92em;
+  line-height: 1.58;
+  overflow-x: auto;
+}
+
+/* .ProseMirror pre code：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+
+/* 高亮 mark */
+.ProseMirror .puremark-highlight,
+/* .ProseMirror mark：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror mark {
+  padding: 0 2px;
+  border-radius: 2px;
+  background: rgba(255, 213, 79, 0.55);
+}
+
+/* 强调 */
+.ProseMirror strong,
+/* .ProseMirror .puremark-strong：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .puremark-strong {
+  font-weight: 700;
+}
+
+.ProseMirror em,
+/* .ProseMirror .puremark-emphasis：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .puremark-emphasis {
+  font-style: italic;
+}
+
+.ProseMirror s,
+.ProseMirror del,
+/* .ProseMirror .puremark-strikethrough：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .puremark-strikethrough {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+/* ============ 图片 ============ */
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.6em 0;
+}
+
+/* .ProseMirror a img：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror a img {
+  cursor: pointer;
+}
+
+/* .ProseMirror .steno-image-node：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-image-node {
+  display: block;
+  margin: 0.8em 0;
+}
+
+/* .ProseMirror .steno-image-node img：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-image-node img {
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* .ProseMirror .steno-image-path：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-image-path {
+  margin: 6px auto 0;
+  max-width: 100%;
+  padding: 4px 8px;
+  color: var(--app-muted);
+  border-bottom: 1px solid var(--app-accent);
+  font-family: ui-monospace, 'SFMono-Regular', 'Consolas', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* .ProseMirror .image-fallback：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .image-fallback {
+  display: block;
+  margin: 0.6em 0;
+  padding: 10px 12px;
+  color: var(--app-muted);
+  background: var(--app-surface-2);
+  border: 1px dashed var(--app-border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* ============ 代码块 NodeView ============ */
+
+.ProseMirror .steno-code-block {
+  margin: 0.9em 0;
+  /* overflow 必须为 visible，否则语言下拉框会被代码块边界裁掉（对齐 PureMark .puremark-code-block）。
+     圆角改由 header（顶部）与 editor（底部）各自承担，保证容器无需裁剪也能保持圆角外观。 */
+  overflow: visible;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--app-surface);
+}
+
+/* .ProseMirror .steno-code-block-header：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: var(--app-surface-2);
+  border-bottom: 1px solid var(--app-border);
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+}
+
+/* .ProseMirror .steno-code-block-lang-label：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-lang-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 64px;
+  height: 22px;
+  padding: 0 8px;
+  color: var(--app-muted);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  font-family: ui-monospace, 'SFMono-Regular', 'Consolas', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* ============ 代码块语言选择器（可编辑态自定义下拉，移植自 PureMark） ============ */
+
+.ProseMirror .steno-custom-select {
+  position: relative;
+  display: inline-block;
+}
+
+/* .ProseMirror .steno-custom-select-button：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-custom-select-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 84px;
+  height: 24px;
+  padding: 0 10px;
+  color: var(--app-fg);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  font-family: ui-monospace, 'SFMono-Regular', 'Consolas', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+/* 下拉箭头（用 ::after 画三角，open 时翻转） */
+.ProseMirror .steno-custom-select-button::after {
+  content: '';
+  margin-left: auto;
+  border-top: 4px solid currentColor;
+  border-right: 3px solid transparent;
+  border-left: 3px solid transparent;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+
+/* .ProseMirror .steno-custom-select.open .steno-custom-select-button：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-custom-select-button:hover {
+  color: var(--app-fg);
+  border-color: var(--app-accent);
+}
+
+.ProseMirror .steno-custom-select.open .steno-custom-select-button::after {
+  transform: rotate(180deg);
+}
+
+/* 下拉面板：默认隐藏，open 时显示；绝对定位浮于编辑器上方 */
+.ProseMirror .steno-custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  display: none;
+  min-width: 140px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* 向上弹出 */
+.ProseMirror .steno-custom-select.dropup .steno-custom-select-dropdown {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+/* .ProseMirror .steno-custom-select.open .steno-custom-select-dropdown：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-custom-select.open .steno-custom-select-dropdown {
+  display: block;
+}
+
+/* .ProseMirror .steno-custom-select-item：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-custom-select-item {
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: var(--app-fg);
+  font-family: ui-monospace, 'SFMono-Regular', 'Consolas', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ProseMirror .steno-custom-select-item:hover {
+  background: var(--app-surface-2);
+}
+
+/* .ProseMirror .steno-custom-select-item.selected：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-custom-select-item.selected {
+  color: var(--app-accent);
+  font-weight: 600;
+}
+
+/* .ProseMirror .steno-code-block-copy-btn：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-copy-btn {
+  min-width: 28px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0 8px;
+  color: var(--app-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.ProseMirror .steno-code-block-copy-btn:hover,
+/* .ProseMirror .steno-code-block-copy-btn.copied：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-copy-btn.copied {
+  color: var(--app-fg);
+  background: var(--app-accent-soft);
+}
+
+/* .ProseMirror .steno-code-block-editor：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-editor {
+  background: color-mix(in oklch, var(--app-surface-2) 66%, var(--app-surface));
+  /* 容器改为 overflow:visible 后，由 editor 自行裁剪底部圆角（下拉框在 header 内，不受影响）。 */
+  overflow: hidden;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+/* .ProseMirror .steno-code-block .cm-editor：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block .cm-editor {
+  background: transparent;
+}
+
+/* .ProseMirror .steno-code-block .cm-gutters：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block .cm-gutters {
+  min-width: 42px;
+}
+
+/* .ProseMirror .steno-code-block-readonly：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-readonly {
+  margin: 0;
+  padding: 12px 14px 12px 0;
+  background: transparent;
+  color: var(--app-fg);
+  border-radius: 0;
+  font-family: ui-monospace, 'SFMono-Regular', 'Consolas', 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  counter-reset: steno-code-line;
+  overflow-x: auto;
+}
+
+/* .ProseMirror .steno-code-block-readonly code：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-readonly code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+/* .ProseMirror .steno-code-block-line：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-line {
+  position: relative;
+  display: block;
+  min-height: 1.55em;
+  padding-left: 3.8em;
+  white-space: pre;
+}
+
+/* .ProseMirror .steno-code-block-line::before：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-line::before {
+  counter-increment: steno-code-line;
+  content: counter(steno-code-line);
+  position: absolute;
+  left: 0;
+  width: 2.8em;
+  padding-right: 0.65em;
+  color: var(--app-faint);
+  text-align: right;
+  user-select: none;
+}
+
+/* .ProseMirror .steno-code-block-line-content：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror .steno-code-block-line-content {
+  color: inherit;
+}
+
+/* ============ 代码块 Mermaid 图表（图表/混合模式预览 + 模式选择器） ============ */
+
+/* 模式选择器（代码/混合/图表）按钮稍窄 */
+.ProseMirror .steno-code-block-mode-select .steno-custom-select-button {
+  min-width: 64px;
+}
+
+/* mermaid 块：编辑器不再承担底部圆角（预览在其下方，由预览收尾圆角） */
+.ProseMirror .steno-code-block.is-mermaid .steno-code-block-editor {
+  border-radius: 0;
+}
+
+/* 图表预览容器：铺满宽度展示 SVG，点击放大（cursor:zoom-in 暗示可点） */
+.ProseMirror .steno-mermaid-preview {
+  display: block;
+  padding: 14px;
+  background: var(--app-surface);
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  overflow-x: auto;
+  cursor: zoom-in;
+}
+
+.ProseMirror .steno-mermaid-preview svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.ProseMirror .steno-mermaid-preview .mermaid-placeholder {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.ProseMirror .steno-mermaid-preview .mermaid-error {
+  color: #c0392b;
+  font-size: 13px;
+}
+
+/* ============ Mermaid 大图浮层（appendChild 到 document.body，故不带 .ProseMirror 前缀） ============ */
+
+.steno-mermaid-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.steno-mermaid-lightbox-stage {
+  transform-origin: center center;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  /* 缩放通过重设 SVG 像素尺寸（矢量重栅格化）实现、transform 只做平移，
+     因此不会 promote 出固定分辨率的合成层（will-change:transform 会把图缓存成位图，放大后发虚）。 */
+  /* 背景由 JS 按 mermaid 主题画布色注入（浮层在 body 上拿不到 --app-* 变量）。
+     这里给内边距 / 圆角 / 投影，把图表收成一张悬浮卡片，让 SVG 文字与箭头在深色遮罩上有高对比底色。 */
+  padding: 16px;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.steno-mermaid-lightbox-stage.dragging {
+  cursor: grabbing;
+}
+
+.steno-mermaid-lightbox-stage svg {
+  display: block;
+}
+
+.steno-mermaid-lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.steno-mermaid-lightbox-close:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* ============ 表格 ============ */
+
+.ProseMirror table {
+  margin: 0 0 0.6em;
+  border-collapse: collapse;
+  table-layout: fixed;
+  overflow: hidden;
+  width: 100%;
+}
+
+.ProseMirror th,
+/* .ProseMirror td：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror td {
+  padding: 6px 10px;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* .ProseMirror th：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.ProseMirror th {
+  font-weight: 700;
+  background: rgba(127, 127, 127, 0.08);
+}
+
+/* ============ 暗色主题（.app-theme-root.dark） ============ */
+
+.app-theme-root.dark .ProseMirror h6 {
+  color: rgba(180, 180, 184, 0.85);
+}
+
+.app-theme-root.dark .ProseMirror code,
+/* .app-theme-root.dark .ProseMirror .steno-code-inline：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror .steno-code-inline {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* 暗色下同样保证反引号语法标记的 <code> 盒子透明（覆盖上面的暗色背景，
+ * 否则暗色主题里行内代码会重新出现"三块内容"）。 */
+.app-theme-root.dark .ProseMirror .steno-syntax .steno-code-inline,
+.app-theme-root.dark .ProseMirror .steno-syntax code {
+  background: transparent;
+}
+
+/* .app-theme-root.dark .ProseMirror pre：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror pre {
+  background: #161b22;
+  color: #e6edf3;
+}
+
+/* .app-theme-root.dark .ProseMirror blockquote：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror blockquote {
+  border-left-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(220, 220, 224, 0.86);
+}
+
+/* .app-theme-root.dark .ProseMirror hr：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror hr {
+  border-top-color: rgba(255, 255, 255, 0.22);
+}
+
+/* .app-theme-root.dark .ProseMirror a：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror a {
+  color: #60a5fa;
+}
+
+.app-theme-root.dark .ProseMirror th,
+/* .app-theme-root.dark .ProseMirror td：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror td {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* .app-theme-root.dark .ProseMirror th：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror th {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-theme-root.dark .ProseMirror .puremark-highlight,
+/* .app-theme-root.dark .ProseMirror mark：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror mark {
+  background: rgba(255, 213, 79, 0.35);
+  color: inherit;
+}
+
+.app-theme-root.dark .ProseMirror .puremark-placeholder,
+/* .app-theme-root.dark .ProseMirror-placeholder：声明 editor base 的视觉范围、布局条件或跨主题表现。 */
+.app-theme-root.dark .ProseMirror-placeholder {
+  color: rgba(180, 180, 184, 0.55);
+}
