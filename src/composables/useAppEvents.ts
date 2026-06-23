@@ -28,6 +28,8 @@ const NOTE_REMOVED_EVENT = 'steno:note-removed';
 const TODO_CHANGED_EVENT = 'steno:todo-changed';
 /** 待办浮窗 toggle 事件名（payload = `boolean`，true = 刚显示，false = 刚隐藏）。 */
 const TODO_PANEL_TOGGLE_EVENT = 'steno:todo-panel-toggle';
+/** 粘贴板浮窗 toggle 事件名（payload = `boolean`，true = 刚显示，false = 刚隐藏）。 */
+const CLIPBOARD_PANEL_TOGGLE_EVENT = 'steno:clipboard-panel-toggle';
 
 /** 笔记保存事件的 payload 类型 — 就是完整的 Note DTO。 */
 export type NoteSavedPayload = Note;
@@ -149,6 +151,10 @@ export function useAppEvents() {
     return safeListen(TODO_PANEL_TOGGLE_EVENT, handler);
   }
 
+  function listenClipboardPanelToggle(handler: (payload: boolean) => void) {
+    return safeListen(CLIPBOARD_PANEL_TOGGLE_EVENT, handler);
+  }
+
   return {
     emitThemeModeChanged,
     emitNoteSaved,
@@ -158,5 +164,6 @@ export function useAppEvents() {
     listenNoteRemoved,
     listenTodoChanged,
     listenTodoPanelToggle,
+    listenClipboardPanelToggle,
   };
 }

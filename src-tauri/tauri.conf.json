@@ -58,6 +58,23 @@
         "visible": false,
         "transparent": true,
         "shadow": true
+      },
+      {
+        "label": "clipboard-panel",
+        "url": "index.html#clipboard-panel",
+        "title": "Steno · 粘贴板",
+        "width": 320,
+        "height": 480,
+        "minWidth": 280,
+        "minHeight": 360,
+        "resizable": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "center": false,
+        "visible": false,
+        "transparent": true,
+        "shadow": true
       }
     ],
     "security": {

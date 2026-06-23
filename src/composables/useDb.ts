@@ -413,6 +413,20 @@ export function useDb() {
     return invoke<void>('toggle_todo_panel');
   }
 
+  // ----- 粘贴板浮窗窗口控制 ----------------------------------------------
+
+  function showClipboardPanel(position?: 'bottom-right' | 'cursor' | 'last') {
+    return invoke<void>('show_clipboard_panel', { position: position ?? null });
+  }
+
+  function hideClipboardPanel() {
+    return invoke<void>('hide_clipboard_panel');
+  }
+
+  function toggleClipboardPanel() {
+    return invoke<void>('toggle_clipboard_panel');
+  }
+
   // ----- settings ------------------------------------------------------
 
   /**
@@ -570,6 +584,9 @@ export function useDb() {
     showTodoPanel,
     hideTodoPanel,
     toggleTodoPanel,
+    showClipboardPanel,
+    hideClipboardPanel,
+    toggleClipboardPanel,
     getSetting,
     setSetting,
     setLaunchAtStartup,

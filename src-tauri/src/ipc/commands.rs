@@ -1033,7 +1033,7 @@ pub fn show_todo_panel(
             .map_err(to_msg)?
             .as_deref()
             .map(window_manager::TodoPanelPosition::parse)
-            .unwrap_or(window_manager::TodoPanelPosition::BottomRight),
+            .unwrap_or(window_manager::TodoPanelPosition::Cursor),
     };
     window_manager::show_todo_panel(&app, db.inner(), strategy).map_err(to_msg)
 }
@@ -1046,6 +1046,31 @@ pub fn hide_todo_panel(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn toggle_todo_panel(app: AppHandle, db: State<'_, Db>) -> Result<(), String> {
     window_manager::toggle_todo_panel(&app, db.inner()).map_err(to_msg)
+}
+
+// ----- 粘贴板浮窗 ------------------------------------------------------
+
+#[tauri::command]
+pub fn show_clipboard_panel(
+    app: AppHandle,
+    db: State<'_, Db>,
+    position: Option<String>,
+) -> Result<(), String> {
+    let strategy = match position {
+        Some(value) => window_manager::TodoPanelPosition::parse(&value),
+        None => window_manager::TodoPanelPosition::Cursor,
+    };
+    window_manager::show_clipboard_panel(&app, db.inner(), strategy).map_err(to_msg)
+}
+
+#[tauri::command]
+pub fn hide_clipboard_panel(app: AppHandle) -> Result<(), String> {
+    window_manager::hide_clipboard_panel(&app).map_err(to_msg)
+}
+
+#[tauri::command]
+pub fn toggle_clipboard_panel(app: AppHandle, db: State<'_, Db>) -> Result<(), String> {
+    window_manager::toggle_clipboard_panel(&app, db.inner()).map_err(to_msg)
 }
 
 // ----- 开机自启动 ------------------------------------------------------

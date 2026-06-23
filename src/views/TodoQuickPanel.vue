@@ -25,22 +25,16 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import { useAppEvents } from '@/composables/useAppEvents';
 import { useDb } from '@/composables/useDb';
-import { useClipboardStore } from '@/stores/clipboard';
 import { useTodosStore } from '@/stores/todos';
-import type { ClipboardEntry, Todo } from '@/types/steno';
+import type { Todo } from '@/types/steno';
 
 // 局部常量 TODO_CONTENT_LIMIT：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const TODO_CONTENT_LIMIT = 500;
 
 // 局部常量 todos：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const todos = useTodosStore();
-// 局部常量 clipboard：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
-const clipboard = useClipboardStore();
-// 局部常量 db：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const db = useDb();
-// 局部常量 events：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const events = useAppEvents();
-// 局部常量 message：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const message = useMessage();
 
 // 局部常量 inputRef：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
@@ -51,9 +45,6 @@ const draft = ref('');
 const includeCompleted = ref(true);
 // 局部常量 submitting：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const submitting = ref(false);
-// 局部常量 activeTab：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
-const activeTab = ref<'todos' | 'clipboard'>('todos');
-// 局部常量 isPinned：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const isPinned = ref(false);
 // 头部栏拖动期间会短暂失焦，dragUntil 期间忽略失焦关闭（见 onFocusChanged）。
 const dragUntil = ref(0);
@@ -91,8 +82,6 @@ const pendingCount = computed(() => visibleEntries.value.filter(item => item.sta
 const isEmpty = computed(() => pendingCount.value === 0);
 // 局部常量 remaining：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const remaining = computed(() => TODO_CONTENT_LIMIT - draft.value.trim().length);
-// 局部常量 clipboardEntries：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
-const clipboardEntries = computed(() => clipboard.entries.slice(0, 30));
 
 let unlistenToggle: (() => void) | null = null;
 let unlistenFocus: (() => void) | null = null;
@@ -114,10 +103,8 @@ async function persistLastPosition() {
 onMounted(async () => {
   await todos.load();
   await todos.loadToday(true);
-  await clipboard.load();
   // 浮窗自身保险地确保事件订阅启动（App.vue 也会做一次，幂等）。
   await todos.startEventListeners();
-  await clipboard.startEventListeners();
   unlistenToggle = await events.listenTodoPanelToggle(visible => {
     if (visible) {
       void nextTick(() => inputRef.value?.focus());
@@ -150,7 +137,6 @@ onBeforeUnmount(() => {
   unlistenToggle = null;
   unlistenFocus?.();
   unlistenFocus = null;
-  clipboard.stopEventListeners();
   void persistLastPosition();
 });
 
@@ -235,46 +221,6 @@ async function onHeaderPointerdown(e: PointerEvent) {
     // 测试 / 浏览器预览环境无窗口 API，忽略。
   }
 }
-
-// 函数 clipboardTypeLabel：封装可复用流程，集中处理输入校验、状态转换或外部模块调用。
-function clipboardTypeLabel(entry: ClipboardEntry) {
-  switch (entry.contentType) {
-    case 'url':
-      return '链接';
-    case 'code':
-      return '代码';
-    case 'image':
-      return '图片';
-    case 'file':
-      return '文件';
-    case 'rich_text':
-      return '富文本';
-    case 'text':
-      return '文本';
-  }
-}
-
-// 函数 clipboardPreview：封装可复用流程，集中处理输入校验、状态转换或外部模块调用。
-function clipboardPreview(entry: ClipboardEntry) {
-  // 图片项不返回 base64（否则会作为超长字符串显示/进 title），改用预览文案；
-  // 模板里图片走 <img> 缩略图分支。
-  if (entry.contentType === 'image') {
-    return entry.preview || '图片';
-  }
-  return entry.content || entry.preview;
-}
-
-// 函数 pasteClipboardEntry：封装可复用流程，集中处理输入校验、状态转换或外部模块调用。
-async function pasteClipboardEntry(entry: ClipboardEntry) {
-  try {
-    if (!isPinned.value) {
-      await db.hideTodoPanel();
-    }
-    await clipboard.pasteEntry(entry.id);
-  } catch (e) {
-    message.error(`粘贴失败：${String(e)}`);
-  }
-}
 </script>
 
 <template>
@@ -330,29 +276,8 @@ async function pasteClipboardEntry(entry: ClipboardEntry) {
       </div>
     </header>
 
-    <nav class="todo-panel-tabs" aria-label="待办浮窗内容">
-      <button
-        type="button"
-        class="todo-panel-tab"
-        :class="{ 'todo-panel-tab--active': activeTab === 'todos' }"
-        data-testid="todo-panel-tab-todos"
-        @click="activeTab = 'todos'"
-      >
-        待办
-      </button>
-      <button
-        type="button"
-        class="todo-panel-tab"
-        :class="{ 'todo-panel-tab--active': activeTab === 'clipboard' }"
-        data-testid="todo-panel-tab-clipboard"
-        @click="activeTab = 'clipboard'"
-      >
-        粘贴板
-      </button>
-    </nav>
-
     <!-- 输入区 -->
-    <div v-if="activeTab === 'todos'" class="todo-panel-input-row">
+    <div class="todo-panel-input-row">
       <input
         ref="inputRef"
         v-model="draft"
@@ -380,7 +305,7 @@ async function pasteClipboardEntry(entry: ClipboardEntry) {
     </div>
 
     <!-- 列表 / 空态 -->
-    <div v-if="activeTab === 'todos'" class="todo-panel-body">
+    <div class="todo-panel-body">
       <NScrollbar v-if="!isEmpty" class="todo-panel-scroll">
         <ul class="todo-panel-list" data-testid="todo-panel-list">
           <li
@@ -433,44 +358,6 @@ async function pasteClipboardEntry(entry: ClipboardEntry) {
         </div>
         <p class="empty-title">太棒了！</p>
         <p class="empty-subtitle">所有任务都已完成</p>
-      </div>
-    </div>
-
-    <div v-else class="todo-panel-body todo-panel-body--clipboard">
-      <NScrollbar v-if="clipboardEntries.length > 0" class="todo-panel-scroll">
-        <ul class="todo-panel-clipboard-list" data-testid="todo-panel-clipboard-list">
-          <li v-for="entry in clipboardEntries" :key="entry.id" class="todo-panel-clipboard-item">
-            <span class="todo-panel-clipboard-type">{{ clipboardTypeLabel(entry) }}</span>
-            <button
-              type="button"
-              class="todo-panel-clipboard-content"
-              :class="{ 'todo-panel-clipboard-content--image': entry.contentType === 'image' }"
-              :data-testid="`todo-panel-clipboard-content-${entry.id}`"
-              :title="clipboardPreview(entry)"
-              @dblclick="pasteClipboardEntry(entry)"
-            >
-              <img
-                v-if="entry.contentType === 'image'"
-                class="todo-panel-clipboard-thumb"
-                :src="entry.content"
-                alt="剪贴板图片预览"
-              />
-              <span v-else>{{ clipboardPreview(entry) }}</span>
-            </button>
-          </li>
-        </ul>
-      </NScrollbar>
-
-      <div v-else class="todo-panel-empty" data-testid="todo-panel-clipboard-empty">
-        <div class="empty-check">
-          <NIcon size="30">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 3H5a2 2 0 0 0-2 2v14h2V5h14V3zm-3 4H9a2 2 0 0 0-2 2v12h9a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-            </svg>
-          </NIcon>
-        </div>
-        <p class="empty-title">暂无粘贴板记录</p>
-        <p class="empty-subtitle">复制内容后会显示在这里</p>
       </div>
     </div>
   </div>
@@ -557,35 +444,6 @@ async function pasteClipboardEntry(entry: ClipboardEntry) {
   color: rgba(232, 173, 122, 1);
 }
 
-.todo-panel-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 0 14px 10px;
-}
-
-.todo-panel-tab {
-  height: 30px;
-  border: 1px solid rgba(251, 250, 248, 0.08);
-  border-radius: 8px;
-  background: rgba(251, 250, 248, 0.04);
-  color: rgba(251, 250, 248, 0.56);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  transition:
-    background 120ms,
-    border-color 120ms,
-    color 120ms;
-}
-
-.todo-panel-tab:hover,
-.todo-panel-tab--active {
-  border-color: rgba(232, 173, 122, 0.38);
-  background: rgba(232, 173, 122, 0.14);
-  color: rgba(251, 250, 248, 0.94);
-}
-
 .todo-panel-input-row {
   display: flex;
   gap: 8px;
@@ -643,10 +501,6 @@ async function pasteClipboardEntry(entry: ClipboardEntry) {
   flex: 1;
   min-height: 0;
   padding: 0 6px 12px;
-}
-
-.todo-panel-body--clipboard {
-  padding-top: 0;
 }
 
 .todo-panel-scroll {
@@ -721,70 +575,6 @@ async function pasteClipboardEntry(entry: ClipboardEntry) {
   font-size: 13px;
   color: rgba(251, 250, 248, 0.85);
   word-break: break-word;
-}
-
-.todo-panel-clipboard-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 8px;
-  display: grid;
-  gap: 6px;
-}
-
-.todo-panel-clipboard-item {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(251, 250, 248, 0.04);
-}
-
-.todo-panel-clipboard-type {
-  color: rgba(232, 173, 122, 0.92);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.todo-panel-clipboard-content {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: rgba(251, 250, 248, 0.86);
-  cursor: text;
-  font:
-    12.5px/1.45 ui-monospace,
-    SFMono-Regular,
-    Consolas,
-    'Liberation Mono',
-    Menlo,
-    monospace;
-  overflow: hidden;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.todo-panel-clipboard-content:focus-visible {
-  outline: 2px solid rgba(232, 173, 122, 0.5);
-  outline-offset: 3px;
-}
-
-.todo-panel-clipboard-content--image {
-  cursor: pointer;
-  white-space: normal;
-}
-
-.todo-panel-clipboard-thumb {
-  display: block;
-  max-width: 100%;
-  max-height: 44px;
-  object-fit: contain;
-  border-radius: 4px;
-  background: rgba(251, 250, 248, 0.06);
 }
 
 .todo-panel-delete {

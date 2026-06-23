@@ -203,6 +203,7 @@ export type WindowMode =
   | 'todo'
   | 'stats'
   | 'todo-panel'
+  | 'clipboard-panel'
   | 'screenshot'
   | 'ocr'
   | 'translate'

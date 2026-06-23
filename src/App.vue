@@ -28,6 +28,7 @@ import FloatingEditor from '@/components/FloatingEditor.vue';
 import MainWorkbenchShell from '@/components/MainWorkbenchShell.vue';
 import CanvasView from '@/views/CanvasView.vue';
 import ClipboardView from '@/views/ClipboardView.vue';
+import ClipboardQuickPanel from '@/views/ClipboardQuickPanel.vue';
 import MainView from '@/views/MainView.vue';
 import NoteEditorView from '@/views/NoteEditorView.vue';
 import PrintView from '@/views/PrintView.vue';
@@ -85,6 +86,9 @@ onMounted(() => {
   // 不透明背景与圆角，避免其圆角在浮窗四角外露出 --app-bg 形成白边（见 global.css）。
   if (ui.mode === 'todo-panel') {
     document.documentElement.classList.add('window-todo-panel');
+  }
+  if (ui.mode === 'clipboard-panel') {
+    document.documentElement.classList.add('window-clipboard-panel');
   }
 
   void listenThemeModeChanged(mode => {
@@ -165,6 +169,7 @@ watch(
         </template>
         <FloatingEditor v-else-if="ui.mode === 'floating'" />
         <TodoQuickPanel v-else-if="ui.mode === 'todo-panel'" />
+        <ClipboardQuickPanel v-else-if="ui.mode === 'clipboard-panel'" />
         <FloatingEditor v-else-if="ui.mode === 'sticky' && ui.noteId" :key="ui.noteId" :note-id="ui.noteId" />
         <SettingsView v-else-if="ui.mode === 'settings'" />
         <ZenMode v-else-if="ui.mode === 'zen'" />
@@ -200,6 +205,13 @@ watch(
 
 /* 待办浮窗（透明窗口）：与 #app 一样去掉不透明背景与圆角裁剪，避免四角白边。 */
 :global(html.window-todo-panel) .app-theme-root {
+  background: transparent;
+  border-radius: 0;
+  clip-path: none;
+}
+
+/* 粘贴板浮窗（透明窗口）：同上。 */
+:global(html.window-clipboard-panel) .app-theme-root {
   background: transparent;
   border-radius: 0;
   clip-path: none;

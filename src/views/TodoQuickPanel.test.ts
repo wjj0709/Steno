@@ -11,7 +11,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClipboardEntry, CreateTodoRequest, Todo, UpdateTodoRequest } from '@/types/steno';
+import type { CreateTodoRequest, Todo, UpdateTodoRequest } from '@/types/steno';
 import { useTodosStore } from '@/stores/todos';
 import TodoQuickPanel from './TodoQuickPanel.vue';
 import TodoQuickPanelSource from './TodoQuickPanel.vue?raw';
@@ -33,10 +33,6 @@ const deleteTodoIpc = vi.fn<(id: string) => Promise<void>>();
 const hideTodoPanel = vi.fn<() => Promise<void>>();
 // 局部常量 setSetting：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const setSetting = vi.fn<(key: string, value: string) => Promise<void>>();
-// 局部常量 listClipboardEntries：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
-const listClipboardEntries = vi.fn<() => Promise<ClipboardEntry[]>>();
-// 局部常量 pasteClipboardEntry：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
-const pasteClipboardEntry = vi.fn<(id: string) => Promise<void>>();
 // 局部常量 setAlwaysOnTop：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
 const setAlwaysOnTop = vi.fn<(alwaysOnTop: boolean) => Promise<void>>();
 let focusChangedHandler: ((event: { payload: boolean }) => void) | null = null;
@@ -50,9 +46,7 @@ vi.mock('@/composables/useDb', () => ({
     completeTodo: completeTodoIpc,
     deleteTodo: deleteTodoIpc,
     hideTodoPanel,
-    setSetting,
-    listClipboardEntries,
-    pasteClipboardEntry
+    setSetting
   })
 }));
 
@@ -118,22 +112,6 @@ function makeTodo(overrides: Partial<Todo> = {}): Todo {
   };
 }
 
-// 函数 makeClipboardEntry：封装可复用流程，集中处理输入校验、状态转换或外部模块调用。
-function makeClipboardEntry(overrides: Partial<ClipboardEntry> = {}): ClipboardEntry {
-  return {
-    id: 'clip-1',
-    contentType: 'text',
-    content: '剪贴板内容',
-    htmlContent: null,
-    preview: '剪贴板内容',
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-    sizeBytes: 15,
-    pinnedAt: null,
-    ...overrides
-  };
-}
-
 // 测试用例：验证「TodoQuickPanel」场景，锁定 Todo Quick Panel 的用户可见行为。
 describe('TodoQuickPanel', () => {
   beforeEach(() => {
@@ -146,8 +124,6 @@ describe('TodoQuickPanel', () => {
     deleteTodoIpc.mockReset();
     hideTodoPanel.mockReset().mockResolvedValue();
     setSetting.mockReset().mockResolvedValue();
-    listClipboardEntries.mockReset().mockResolvedValue([]);
-    pasteClipboardEntry.mockReset().mockResolvedValue();
     setAlwaysOnTop.mockReset().mockResolvedValue();
     focusChangedHandler = null;
   });
@@ -293,24 +269,6 @@ describe('TodoQuickPanel', () => {
 
     expect(wrapper.text()).toContain('远程新增');
     expect(wrapper.text()).toContain('共 1 个任务');
-  });
-
-  // 测试用例：验证「switches to clipboard tab and pastes an entry from the content area」场景，锁定 Todo Quick Panel 的用户可见行为。
-  it('switches to clipboard tab and pastes an entry from the content area', async () => {
-    listClipboardEntries.mockResolvedValueOnce([makeClipboardEntry({ id: 'clip-a', content: '从浮窗粘贴' })]);
-
-    // 局部常量 wrapper：缓存当前流程的中间结果，避免后续逻辑重复计算或重复读取状态。
-    const wrapper = mount(TodoQuickPanel);
-    await flushPromises();
-
-    await wrapper.get('[data-testid="todo-panel-tab-clipboard"]').trigger('click');
-
-    expect(wrapper.get('[data-testid="todo-panel-clipboard-list"]').text()).toContain('从浮窗粘贴');
-
-    await wrapper.get('[data-testid="todo-panel-clipboard-content-clip-a"]').trigger('dblclick');
-    await flushPromises();
-
-    expect(pasteClipboardEntry).toHaveBeenCalledWith('clip-a');
   });
 
   // 测试用例：验证「toggles pinned state and only auto closes on blur while unpinned」场景，锁定 Todo Quick Panel 的用户可见行为。

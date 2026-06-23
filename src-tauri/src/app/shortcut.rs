@@ -54,7 +54,7 @@ pub fn todo_panel_shortcut() -> Shortcut {
 enum Action {
     ToggleMain,
     ToggleQuicknote,
-    OpenClipboard,
+    ToggleClipboardPanel,
     ToggleTodoPanel,
 }
 
@@ -164,8 +164,10 @@ pub fn plugin() -> TauriPlugin<Wry> {
             match lookup_action(shortcut) {
                 Some(Action::ToggleMain) => window_manager::toggle_main(app),
                 Some(Action::ToggleQuicknote) => quicknote::toggle(app),
-                Some(Action::OpenClipboard) => {
-                    let _ = window_manager::open_clipboard(app);
+                Some(Action::ToggleClipboardPanel) => {
+                    if let Some(db) = app.try_state::<Db>() {
+                        let _ = window_manager::toggle_clipboard_panel(app, db.inner());
+                    }
                 }
                 Some(Action::ToggleTodoPanel) => {
                     if let Some(db) = app.try_state::<Db>() {
@@ -213,7 +215,7 @@ pub fn register_from_settings(app: &AppHandle, db: &Db) -> Result<(), ShortcutEr
     let mut entries = vec![
         (main_sc, Action::ToggleMain),
         (quicknote_sc, Action::ToggleQuicknote),
-        (clipboard_sc, Action::OpenClipboard),
+        (clipboard_sc, Action::ToggleClipboardPanel),
     ];
     if todo_enabled {
         entries.push((todo_panel_sc, Action::ToggleTodoPanel));

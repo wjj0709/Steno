@@ -22,6 +22,10 @@ use crate::todo;
 pub const MAIN_LABEL: &str = "main";
 /// 固定 TODO_PANEL_LABEL 常量，避免路径、键名或默认值在调用点分散。
 pub const TODO_PANEL_LABEL: &str = "todo-panel";
+/// 固定 CLIPBOARD_PANEL_LABEL 常量，避免路径、键名或默认值在调用点分散。
+pub const CLIPBOARD_PANEL_LABEL: &str = "clipboard-panel";
+/// 粘贴板浮窗 toggle 事件名（与前端 useAppEvents 约定一致）。
+pub const CLIPBOARD_PANEL_TOGGLE_EVENT: &str = "steno:clipboard-panel-toggle";
 /// 固定 NAVIGATE_EVENT 常量，避免路径、键名或默认值在调用点分散。
 const NAVIGATE_EVENT: &str = "steno:navigate";
 
@@ -170,6 +174,8 @@ pub fn open_settings(app: &AppHandle) -> tauri::Result<()> {
 }
 
 /// 执行 open_clipboard 流程，集中处理 window manager 相关的输入、错误和返回值。
+/// 粘贴板现在走独立浮窗（`toggle_clipboard_panel`），此主窗口内导航保留备用。
+#[allow(dead_code)]
 pub fn open_clipboard(app: &AppHandle) -> tauri::Result<()> {
     navigate_main(app, "clipboard", None)
 }
@@ -367,8 +373,87 @@ pub fn toggle_todo_panel(app: &AppHandle, db: &Db) -> tauri::Result<()> {
             .flatten()
             .as_deref()
             .map(TodoPanelPosition::parse)
-            .unwrap_or(TodoPanelPosition::BottomRight);
+            .unwrap_or(TodoPanelPosition::Cursor);
         show_todo_panel(app, db, strategy)
+    }
+}
+
+// ----- 粘贴板浮窗（clipboard-panel） ----------------------------------
+
+/// 执行 apply_position_to_clipboard_panel 流程，与待办浮窗复用同一套位置计算。
+fn apply_position_to_clipboard_panel(
+    app: &AppHandle,
+    db: &Db,
+    strategy: TodoPanelPosition,
+) -> tauri::Result<()> {
+    let Some(panel) = app.get_webview_window(CLIPBOARD_PANEL_LABEL) else {
+        return Ok(());
+    };
+    let panel_size = panel
+        .outer_size()
+        .map(|s| (s.width as i32, s.height as i32))
+        .unwrap_or((320, 480));
+    let monitor = panel.current_monitor().ok().flatten();
+    let screen_size = monitor
+        .as_ref()
+        .map(|m| (m.size().width as i32, m.size().height as i32))
+        .unwrap_or((1920, 1080));
+    let cursor = panel
+        .cursor_position()
+        .ok()
+        .map(|p| (p.x as i32, p.y as i32));
+    let last = db
+        .get_setting("clipboardPanelLastPos")
+        .ok()
+        .flatten()
+        .as_deref()
+        .and_then(parse_last_position);
+
+    let (x, y) = compute_todo_panel_origin(strategy, screen_size, panel_size, cursor, last);
+    panel.set_position(PhysicalPosition::new(x, y))?;
+    Ok(())
+}
+
+/// 执行 show_clipboard_panel 流程，集中处理 window manager 相关的输入、错误和返回值。
+pub fn show_clipboard_panel(
+    app: &AppHandle,
+    db: &Db,
+    strategy: TodoPanelPosition,
+) -> tauri::Result<()> {
+    apply_position_to_clipboard_panel(app, db, strategy)?;
+    if let Some(panel) = app.get_webview_window(CLIPBOARD_PANEL_LABEL) {
+        panel.show()?;
+        panel.set_focus()?;
+        let _ = panel.emit(CLIPBOARD_PANEL_TOGGLE_EVENT, true);
+    }
+    Ok(())
+}
+
+/// 执行 hide_clipboard_panel 流程，集中处理 window manager 相关的输入、错误和返回值。
+pub fn hide_clipboard_panel(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(panel) = app.get_webview_window(CLIPBOARD_PANEL_LABEL) {
+        panel.hide()?;
+        let _ = panel.emit(CLIPBOARD_PANEL_TOGGLE_EVENT, false);
+    }
+    Ok(())
+}
+
+/// 切换粘贴板浮窗显示状态。由全局快捷键 handler / `toggle_clipboard_panel` 命令共用。
+pub fn toggle_clipboard_panel(app: &AppHandle, db: &Db) -> tauri::Result<()> {
+    let Some(panel) = app.get_webview_window(CLIPBOARD_PANEL_LABEL) else {
+        return Ok(());
+    };
+    if panel.is_visible().unwrap_or(false) {
+        hide_clipboard_panel(app)
+    } else {
+        let strategy = db
+            .get_setting("clipboardPanelPosition")
+            .ok()
+            .flatten()
+            .as_deref()
+            .map(TodoPanelPosition::parse)
+            .unwrap_or(TodoPanelPosition::Cursor);
+        show_clipboard_panel(app, db, strategy)
     }
 }
 
