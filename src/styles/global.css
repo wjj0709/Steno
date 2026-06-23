@@ -21,6 +21,17 @@ body,
   padding: 0;
 }
 
+/*
+ * html/body 始终透明：webview 默认将 html/body 渲染为白色，而 #app 才提供不透明背景。
+ * 透明窗口（待办浮窗）在 JS 打上 .window-todo-panel 类之前，圆角四角之外会短暂露出
+ * 这层默认白色——即"白边"。统一让 html/body 透明可消除该闪现，且安全：所有窗口的
+ * 不透明背景都由下方 #app 规则负责。
+ */
+html,
+body {
+  background: transparent;
+}
+
 /* #app：声明 global 的视觉范围、布局条件或跨主题表现。 */
 #app {
   border-radius: var(--app-window-radius, 12px);
@@ -46,6 +57,18 @@ html.window-todo-panel body {
 
 /* html.window-todo-panel #app：声明 global 的视觉范围、布局条件或跨主题表现。 */
 html.window-todo-panel #app {
+  background: transparent;
+  border-radius: 0;
+  clip-path: none;
+}
+
+/* 粘贴板浮窗（透明窗口）：与待办浮窗同处理，避免四角白边。 */
+html.window-clipboard-panel,
+html.window-clipboard-panel body {
+  background: transparent;
+}
+
+html.window-clipboard-panel #app {
   background: transparent;
   border-radius: 0;
   clip-path: none;
